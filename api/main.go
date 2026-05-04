@@ -51,7 +51,6 @@ func main() {
 		})
 
 		// API routes
-		r = gin.Default()
 		api := r.Group("/api")
 		{
 			api.POST("/auth/google", authHandler.GoogleLogin)

@@ -37,7 +37,7 @@ CREATE TABLE product_images (
 
 CREATE TABLE reviews (
     id BIGSERIAL PRIMARY KEY,
-    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE SET NULL,
+    user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
     product_id BIGINT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
     rating INTEGER CHECK (rating >= 1 AND rating <= 5),
     comment TEXT,
