@@ -7,6 +7,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/morning-glorys/drav-backend/internal/handler"
+	"github.com/morning-glorys/drav-backend/internal/repository"
+	"github.com/morning-glorys/drav-backend/internal/service"
 	"github.com/morning-glorys/drav-backend/pkg/database"
 )
 
@@ -32,8 +35,14 @@ func main() {
 		}
 		defer db.Close()
 
+		// auth route
+		userRepo := repository.NewUserRepository(db)
+		authService := service.NewAuthService(userRepo)
+		authHandler := handler.NewAuthHandler(authService)
+
 		r := gin.Default()
 
+		// health check
 		r.GET("/ping", func(c *gin.Context) {
 			c.JSON(200, gin.H{
 				"message": "pong",
@@ -41,6 +50,13 @@ func main() {
 			})
 		})
 
+		// API routes
+		api := r.Group("/api")
+		{
+			api.POST("/auth/google", authHandler.GoogleLogin)
+		}
+
+		// start the server
 		port := os.Getenv("PORT")
 		if port == "" {
 			port = "8080"
