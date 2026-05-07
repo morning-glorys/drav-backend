@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 
 	"cloud.google.com/go/auth/credentials/idtoken"
+
 	"github.com/morning-glorys/drav-backend/internal/model"
 	"github.com/morning-glorys/drav-backend/internal/repository"
 	"github.com/morning-glorys/drav-backend/pkg/utils"
@@ -27,47 +27,56 @@ func NewAuthService(userRepo repository.UserRepository) AuthService {
 
 // google login
 func (s *authService) GoogleLogin(ctx context.Context, googleToken string) (string, error) {
+
 	clientID := os.Getenv("GOOGLE_CLIENT_ID")
 	if clientID == "" {
-		return "", errors.New("konfigurasi server tidak diatur")
+		return "", errors.New("google client id is not configured")
 	}
 
+	// validate google token
 	payload, err := idtoken.Validate(ctx, googleToken, clientID)
 	if err != nil {
-		return "", fmt.Errorf("token google tidak valid: %w", err)
+		return "", fmt.Errorf("invalid google token: %w", err)
 	}
 
 	email, emailOk := payload.Claims["email"].(string)
 	name, nameOk := payload.Claims["name"].(string)
 
 	if !emailOk || !nameOk {
-		return "", errors.New("gagal mengekstrak email dan nama dari akun google")
+		return "", errors.New("failed to extract google account data")
 	}
 
 	user, err := s.userRepo.GetByUserEmail(ctx, email)
+
 	if err != nil {
-		errMsg := strings.ToLower(err.Error())
-		if strings.Contains(errMsg, "no rows") || strings.Contains(errMsg, "tidak ditemukan") || strings.Contains(errMsg, "not found") {
+		if errors.Is(err, repository.ErrUserNotFound) {
+
 			newUser := &model.User{
 				Name:         name,
 				Email:        email,
 				AuthProvider: "google",
 				Role:         "user",
 			}
+
 			err = s.userRepo.CreateUser(ctx, newUser)
 			if err != nil {
-				return "", fmt.Errorf("gagal membuat akun baru: %w", err)
+				return "", fmt.Errorf("failed to create user: %w", err)
 			}
+
 			user = newUser
 
 		} else {
-			return "", fmt.Errorf("gangguan saat memeriksa database: %w", err)
+			return "", fmt.Errorf("database error while checking user: %w", err)
 		}
+	}
+
+	if user.ID == 0 {
+		return "", errors.New("invalid user id")
 	}
 
 	token, err := utils.GenerateToken(user.ID, user.Role)
 	if err != nil {
-		return "", fmt.Errorf("gagal membuat sesi login: %w", err)
+		return "", fmt.Errorf("failed to generate token: %w", err)
 	}
 
 	return token, nil

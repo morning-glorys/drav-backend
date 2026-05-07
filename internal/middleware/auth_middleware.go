@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"log"
 	"net/http"
 	"strings"
 
@@ -21,7 +22,10 @@ func RequireAuth() gin.HandlerFunc {
 		}
 		userID, err := utils.VerifyToken(authHeader)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			log.Println("verify token error:", err)
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"error": "unauthorized",
+			})
 			return
 		}
 		c.Set("userID", userID)
