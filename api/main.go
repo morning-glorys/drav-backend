@@ -3,12 +3,14 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 
 	"github.com/morning-glorys/drav-backend/internal/handler"
+	"github.com/morning-glorys/drav-backend/internal/middleware"
 	"github.com/morning-glorys/drav-backend/internal/repository"
 	"github.com/morning-glorys/drav-backend/internal/service"
 	"github.com/morning-glorys/drav-backend/pkg/database"
@@ -34,12 +36,14 @@ func main() {
 		log.Fatalf("Gagal koneksi database: %v", err)
 	}
 	defer db.Close()
+
 	userRepo := repository.NewUserRepository(db)
 	authService := service.NewAuthService(userRepo)
 	authHandler := handler.NewAuthHandler(authService)
 
 	r := gin.Default()
 
+	// --- PUBLIC ROUTES ---
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"message": "pong",
@@ -47,10 +51,27 @@ func main() {
 		})
 	})
 
-	// api grouping
 	api := r.Group("/api")
 	{
 		api.POST("/auth/google", authHandler.GoogleLogin)
+	}
+
+	// --- PROTECTED ROUTES ---
+	protectedAPI := r.Group("/api")
+	protectedAPI.Use(middleware.RequireAuth())
+	{
+		protectedAPI.GET("/profile", func(c *gin.Context) {
+			userID, exists := c.Get("userID")
+			if !exists {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data user dari token"})
+				return
+			}
+
+			c.JSON(http.StatusOK, gin.H{
+				"message": "Akses Diberikan! Selamat datang di area rahasia.",
+				"user_id": userID,
+			})
+		})
 	}
 
 	port := os.Getenv("PORT")

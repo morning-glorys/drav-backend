@@ -8,6 +8,8 @@ import (
 	"github.com/morning-glorys/drav-backend/internal/model"
 )
 
+var ErrUserNotFound = errors.New("user not found")
+
 type UserRepository interface {
 	GetByUserEmail(ctx context.Context, email string) (*model.User, error)
 	CreateUser(ctx context.Context, user *model.User) error
