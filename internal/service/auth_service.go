@@ -3,7 +3,9 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
+	"strings"
 
 	"cloud.google.com/go/auth/credentials/idtoken"
 	"github.com/morning-glorys/drav-backend/internal/model"
@@ -27,12 +29,12 @@ func NewAuthService(userRepo repository.UserRepository) AuthService {
 func (s *authService) GoogleLogin(ctx context.Context, googleToken string) (string, error) {
 	clientID := os.Getenv("GOOGLE_CLIENT_ID")
 	if clientID == "" {
-		return "", errors.New("Configuration Is Not Set")
+		return "", errors.New("konfigurasi server tidak diatur")
 	}
 
 	payload, err := idtoken.Validate(ctx, googleToken, clientID)
 	if err != nil {
-		return "", errors.New("Invalid Google Token")
+		return "", fmt.Errorf("token google tidak valid: %w", err)
 	}
 
 	email, emailOk := payload.Claims["email"].(string)
@@ -44,23 +46,29 @@ func (s *authService) GoogleLogin(ctx context.Context, googleToken string) (stri
 
 	user, err := s.userRepo.GetByUserEmail(ctx, email)
 	if err != nil {
-		newUser := &model.User{
-			Name:         name,
-			Email:        email,
-			AuthProvider: "google",
-			Role:         "user",
+		errMsg := strings.ToLower(err.Error())
+		if strings.Contains(errMsg, "no rows") || strings.Contains(errMsg, "tidak ditemukan") || strings.Contains(errMsg, "not found") {
+			newUser := &model.User{
+				Name:         name,
+				Email:        email,
+				AuthProvider: "google",
+				Role:         "user",
+			}
+			err = s.userRepo.CreateUser(ctx, newUser)
+			if err != nil {
+				return "", fmt.Errorf("gagal membuat akun baru: %w", err)
+			}
+			user = newUser
+
+		} else {
+			return "", fmt.Errorf("gangguan saat memeriksa database: %w", err)
 		}
-		err = s.userRepo.CreateUser(ctx, newUser)
-		if err != nil {
-			return "", errors.New("gagal membuat akun baru")
-		}
-		user = newUser
 	}
+
 	token, err := utils.GenerateToken(user.ID, user.Role)
 	if err != nil {
-		return "", errors.New("gagal membuat sesi login")
+		return "", fmt.Errorf("gagal membuat sesi login: %w", err)
 	}
 
 	return token, nil
-
 }
