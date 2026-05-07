@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/morning-glorys/drav-backend/internal/service"
 )
@@ -19,5 +21,19 @@ type GoogleLoginRequest struct {
 
 // google login handler
 func (h *AuthHandler) GoogleLogin(c *gin.Context) {
-	//TODO: implementasi handler untuk login dengan Google OAuth2
+	var req GoogleLoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Need Token For Login"})
+		return
+	}
+
+	token, err := h.authService.GoogleLogin(c.Request.Context(), req.IDToken)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Login berhasil",
+		"token":   token,
+	})
 }
