@@ -17,7 +17,7 @@ func RequireAuth() gin.HandlerFunc {
 			return
 		}
 		if !strings.HasPrefix(authHeader, "Bearer ") {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Format token tidak valid"})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization header format"})
 			return
 		}
 		userID, err := utils.VerifyToken(authHeader)

@@ -8,13 +8,26 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 
+	_ "github.com/morning-glorys/drav-backend/docs"
 	"github.com/morning-glorys/drav-backend/internal/handler"
 	"github.com/morning-glorys/drav-backend/internal/middleware"
 	"github.com/morning-glorys/drav-backend/internal/repository"
 	"github.com/morning-glorys/drav-backend/internal/service"
 	"github.com/morning-glorys/drav-backend/pkg/database"
 )
+
+// @title Drav Backend API
+// @version 1.0
+// @description REST API for Drav e-commerce backend.
+// @BasePath /api
+// @schemes http https
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Use format: Bearer {token}
 
 func main() {
 	err := godotenv.Load()
@@ -37,11 +50,19 @@ func main() {
 	}
 	defer db.Close()
 
+	// Inject User
 	userRepo := repository.NewUserRepository(db)
 	authService := service.NewAuthService(userRepo)
 	authHandler := handler.NewAuthHandler(authService)
 
+	// Inject Product
+	productRepo := repository.NewProductRepository(db)
+	productService := service.NewProductService(productRepo)
+	productHandler := handler.NewProductHandler(productService)
+
 	r := gin.Default()
+	r.Use(middleware.CORS())
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// --- PUBLIC ROUTES ---
 	r.GET("/ping", func(c *gin.Context) {
@@ -53,7 +74,9 @@ func main() {
 
 	api := r.Group("/api")
 	{
-		api.POST("/auth/google", authHandler.GoogleLogin)
+		api.POST("/auth/google", middleware.RateLimitByIP(2, 5), authHandler.GoogleLogin)
+		api.GET("/products", productHandler.GetAllProducts)
+		api.GET("/products/:id", productHandler.GetProductByID)
 	}
 
 	// --- PROTECTED ROUTES ---
@@ -72,6 +95,7 @@ func main() {
 				"user_id": userID,
 			})
 		})
+		protectedAPI.POST("/products", productHandler.CreateProduct)
 	}
 
 	port := os.Getenv("PORT")
