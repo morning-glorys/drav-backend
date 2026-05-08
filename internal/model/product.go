@@ -4,19 +4,20 @@ import "time"
 
 type Product struct {
 	ID          int       `json:"id"`
+	SellerID    int       `json:"seller_id"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
-	Price       float64   `json:"price"`
+	Price       int       `json:"price"`
 	Stock       int       `json:"stock"`
-	ImageURL    string    `json:"image_url"`
+	Category    string    `json:"category"`
+	IsVerified  bool      `json:"is_verified"`
 	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 type ProductListQuery struct {
 	Page     int
 	Limit    int
 	Search   string
-	MinPrice *float64
-	MaxPrice *float64
+	MinPrice *int
+	MaxPrice *int
 }

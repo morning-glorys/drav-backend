@@ -89,6 +89,10 @@ func (s *productService) CreateProduct(ctx context.Context, req *model.Product) 
 		return ErrInvalidProductData
 	}
 
+	if req.SellerID <= 0 {
+		return ErrInvalidProductData
+	}
+
 	if err := s.productRepo.CreateProduct(ctx, req); err != nil {
 		return fmt.Errorf("failed to create product: %w", err)
 	}
