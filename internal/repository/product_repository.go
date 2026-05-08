@@ -28,7 +28,7 @@ func NewProductRepository(db *sql.DB) ProductRepository {
 
 // get all products
 func (r *productRepository) GetAllProducts(ctx context.Context, query model.ProductListQuery) ([]model.Product, error) {
-	baseQuery := `SELECT id, name, description, price, stock, image_url, created_at, updated_at FROM products`
+	baseQuery := `SELECT id, seller_id, name, description, price, stock, category, is_verified, created_at FROM products`
 	conditions := make([]string, 0)
 	args := make([]interface{}, 0)
 	argPos := 1
@@ -67,7 +67,7 @@ func (r *productRepository) GetAllProducts(ctx context.Context, query model.Prod
 	var products []model.Product
 	for rows.Next() {
 		var p model.Product
-		err := rows.Scan(&p.ID, &p.Name, &p.Description, &p.Price, &p.Stock, &p.ImageURL, &p.CreatedAt, &p.UpdatedAt)
+		err := rows.Scan(&p.ID, &p.SellerID, &p.Name, &p.Description, &p.Price, &p.Stock, &p.Category, &p.IsVerified, &p.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -82,10 +82,10 @@ func (r *productRepository) GetAllProducts(ctx context.Context, query model.Prod
 
 // get product by id
 func (r *productRepository) GetProductByID(ctx context.Context, id int) (*model.Product, error) {
-	query := `SELECT id, name, description, price, stock, image_url, created_at, updated_at FROM products WHERE id = $1`
+	query := `SELECT id, seller_id, name, description, price, stock, category, is_verified, created_at FROM products WHERE id = $1`
 	row := r.db.QueryRowContext(ctx, query, id)
 	var p model.Product
-	err := row.Scan(&p.ID, &p.Name, &p.Description, &p.Price, &p.Stock, &p.ImageURL, &p.CreatedAt, &p.UpdatedAt)
+	err := row.Scan(&p.ID, &p.SellerID, &p.Name, &p.Description, &p.Price, &p.Stock, &p.Category, &p.IsVerified, &p.CreatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrProductNotFound
@@ -99,14 +99,14 @@ func (r *productRepository) GetProductByID(ctx context.Context, id int) (*model.
 // create product
 func (r *productRepository) CreateProduct(ctx context.Context, product *model.Product) error {
 	query := `
-		INSERT INTO products (name, description, price, stock, image_url)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id, created_at, updated_at
+		INSERT INTO products (seller_id, name, description, price, stock, category, is_verified)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING id, created_at
 	`
 	err := r.db.QueryRowContext(
 		ctx, query,
-		product.Name, product.Description, product.Price, product.Stock, product.ImageURL,
-	).Scan(&product.ID, &product.CreatedAt, &product.UpdatedAt)
+		product.SellerID, product.Name, product.Description, product.Price, product.Stock, product.Category, product.IsVerified,
+	).Scan(&product.ID, &product.CreatedAt)
 
 	return err
 }

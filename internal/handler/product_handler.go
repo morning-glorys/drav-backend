@@ -46,9 +46,9 @@ func (h *ProductHandler) GetAllProducts(c *gin.Context) {
 		return
 	}
 
-	var minPrice *float64
+	var minPrice *int
 	if minPriceStr := c.Query("min_price"); minPriceStr != "" {
-		parsed, parseErr := strconv.ParseFloat(minPriceStr, 64)
+		parsed, parseErr := strconv.Atoi(minPriceStr)
 		if parseErr != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid query param"})
 			return
@@ -56,9 +56,9 @@ func (h *ProductHandler) GetAllProducts(c *gin.Context) {
 		minPrice = &parsed
 	}
 
-	var maxPrice *float64
+	var maxPrice *int
 	if maxPriceStr := c.Query("max_price"); maxPriceStr != "" {
-		parsed, parseErr := strconv.ParseFloat(maxPriceStr, 64)
+		parsed, parseErr := strconv.Atoi(maxPriceStr)
 		if parseErr != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid query param"})
 			return

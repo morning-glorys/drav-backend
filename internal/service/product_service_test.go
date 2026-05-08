@@ -78,7 +78,7 @@ func TestGetProductByID_RepoErrorWrapped(t *testing.T) {
 func TestCreateProduct_InvalidData(t *testing.T) {
 	svc := NewProductService(&mockProductRepo{})
 
-	err := svc.CreateProduct(context.Background(), &model.Product{Name: "", Price: 1, Stock: 0})
+	err := svc.CreateProduct(context.Background(), &model.Product{SellerID: 1, Name: "", Price: 1, Stock: 0})
 	if !errors.Is(err, ErrInvalidProductData) {
 		t.Fatalf("expected ErrInvalidProductData, got %v", err)
 	}
@@ -103,7 +103,7 @@ func TestCreateProduct_Success(t *testing.T) {
 		},
 	})
 
-	product := &model.Product{Name: "Laptop", Price: 1500, Stock: 3}
+	product := &model.Product{SellerID: 1, Name: "Laptop", Price: 1500, Stock: 3, Category: "electronics"}
 	err := svc.CreateProduct(context.Background(), product)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
