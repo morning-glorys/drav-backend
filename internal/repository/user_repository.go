@@ -42,7 +42,7 @@ func (r *userRepository) GetByUserEmail(ctx context.Context, email string) (*mod
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errors.New("user tidak ditemukan")
+			return nil, ErrUserNotFound
 		}
 		return nil, err
 	}

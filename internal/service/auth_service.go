@@ -13,16 +13,27 @@ import (
 	"github.com/morning-glorys/drav-backend/pkg/utils"
 )
 
+var (
+	ErrInvalidGoogleToken   = errors.New("invalid google token")
+	ErrUnverifiedGoogleMail = errors.New("google email is not verified")
+)
+
+type googleTokenValidator func(ctx context.Context, token string, audience string) (*idtoken.Payload, error)
+
 type AuthService interface {
 	GoogleLogin(ctx context.Context, googleToken string) (string, error)
 }
 
 type authService struct {
-	userRepo repository.UserRepository
+	userRepo            repository.UserRepository
+	validateGoogleToken googleTokenValidator
 }
 
 func NewAuthService(userRepo repository.UserRepository) AuthService {
-	return &authService{userRepo: userRepo}
+	return &authService{
+		userRepo:            userRepo,
+		validateGoogleToken: idtoken.Validate,
+	}
 }
 
 // google login
@@ -34,16 +45,21 @@ func (s *authService) GoogleLogin(ctx context.Context, googleToken string) (stri
 	}
 
 	// validate google token
-	payload, err := idtoken.Validate(ctx, googleToken, clientID)
+	payload, err := s.validateGoogleToken(ctx, googleToken, clientID)
 	if err != nil {
-		return "", fmt.Errorf("invalid google token: %w", err)
+		return "", errors.Join(ErrInvalidGoogleToken, err)
 	}
 
 	email, emailOk := payload.Claims["email"].(string)
 	name, nameOk := payload.Claims["name"].(string)
+	emailVerified, emailVerifiedOk := payload.Claims["email_verified"].(bool)
 
 	if !emailOk || !nameOk {
 		return "", errors.New("failed to extract google account data")
+	}
+
+	if !emailVerifiedOk || !emailVerified {
+		return "", ErrUnverifiedGoogleMail
 	}
 
 	user, err := s.userRepo.GetByUserEmail(ctx, email)
