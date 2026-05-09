@@ -60,6 +60,11 @@ func main() {
 	productService := service.NewProductService(productRepo)
 	productHandler := handler.NewProductHandler(productService)
 
+	// Inject Seller
+	sellerRepo := repository.NewSellerRepository(db)
+	sellerService := service.NewSellerService(sellerRepo)
+	sellerHandler := handler.NewSellerHandler(sellerService)
+
 	r := gin.Default()
 	r.Use(middleware.CORS())
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
@@ -96,6 +101,8 @@ func main() {
 			})
 		})
 		protectedAPI.POST("/products", productHandler.CreateProduct)
+		protectedAPI.POST("/sellers/register", sellerHandler.RegisterStore)
+		protectedAPI.GET("/sellers/me", sellerHandler.GetStoreProfile)
 	}
 
 	port := os.Getenv("PORT")
