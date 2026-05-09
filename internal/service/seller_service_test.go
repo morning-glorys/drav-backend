@@ -132,3 +132,28 @@ func TestRegisterStore_StoreNameTooLong(t *testing.T) {
 		t.Fatalf("expected ErrSellerInvalidInput, got %v", err)
 	}
 }
+
+func TestRegisterStore_CreateReturnsAlreadyExists_MapsConflict(t *testing.T) {
+	svc := NewSellerService(&mockSellerRepo{
+		getByUserIDFn: func(ctx context.Context, userID int) (*model.Seller, error) {
+			return nil, repository.ErrSellerNotFound
+		},
+		createFn: func(ctx context.Context, seller *model.Seller) error {
+			return repository.ErrSellerAlreadyExists
+		},
+	})
+
+	err := svc.RegisterStore(context.Background(), 10, &model.Seller{StoreName: "Store One"})
+	if !errors.Is(err, ErrSellerConflict) {
+		t.Fatalf("expected ErrSellerConflict, got %v", err)
+	}
+}
+
+func TestRegisterStore_UnicodeRuneLengthValidation(t *testing.T) {
+	svc := NewSellerService(&mockSellerRepo{})
+
+	err := svc.RegisterStore(context.Background(), 1, &model.Seller{StoreName: "あ"})
+	if !errors.Is(err, ErrSellerInvalidInput) {
+		t.Fatalf("expected ErrSellerInvalidInput for 1-rune name, got %v", err)
+	}
+}

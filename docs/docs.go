@@ -346,7 +346,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.Seller"
+                            "$ref": "#/definitions/handler.RegisterSellerRequest"
                         }
                     }
                 ],
@@ -410,6 +410,17 @@ const docTemplate = `{
                 }
             }
         },
+        "handler.RegisterSellerRequest": {
+            "type": "object",
+            "required": [
+                "store_name"
+            ],
+            "properties": {
+                "store_name": {
+                    "type": "string"
+                }
+            }
+        },
         "model.Product": {
             "type": "object",
             "properties": {
@@ -438,29 +449,6 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "stock": {
-                    "type": "integer"
-                }
-            }
-        },
-        "model.Seller": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "is_verified": {
-                    "type": "boolean"
-                },
-                "rating": {
-                    "type": "number"
-                },
-                "store_name": {
-                    "type": "string"
-                },
-                "user_id": {
                     "type": "integer"
                 }
             }

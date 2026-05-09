@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/morning-glorys/drav-backend/internal/model"
 	"github.com/morning-glorys/drav-backend/internal/repository"
@@ -45,7 +46,8 @@ func (s *sellerService) RegisterStore(ctx context.Context, userID int, req *mode
 		return ErrSellerInvalidInput
 	}
 
-	if len(req.StoreName) < storeNameMinLength || len(req.StoreName) > storeNameMaxLength {
+	storeNameLen := utf8.RuneCountInString(req.StoreName)
+	if storeNameLen < storeNameMinLength || storeNameLen > storeNameMaxLength {
 		return ErrSellerInvalidInput
 	}
 
@@ -61,6 +63,9 @@ func (s *sellerService) RegisterStore(ctx context.Context, userID int, req *mode
 	req.UserID = userID
 	err = s.sellerRepo.CreateSeller(ctx, req)
 	if err != nil {
+		if errors.Is(err, repository.ErrSellerAlreadyExists) {
+			return ErrSellerConflict
+		}
 		return fmt.Errorf("failed to create seller: %w", err)
 	}
 	return nil

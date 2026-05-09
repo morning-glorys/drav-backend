@@ -5,10 +5,14 @@ import (
 	"database/sql"
 	"errors"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/morning-glorys/drav-backend/internal/model"
 )
 
-var ErrSellerNotFound = errors.New("seller not found")
+var (
+	ErrSellerNotFound      = errors.New("seller not found")
+	ErrSellerAlreadyExists = errors.New("seller already exists")
+)
 
 type SellerRepository interface {
 	GetSellerByUserID(ctx context.Context, userID int) (*model.Seller, error)
@@ -46,5 +50,13 @@ func (r *sellerRepository) CreateSeller(ctx context.Context, seller *model.Selle
 		RETURNING id, is_verified, rating, created_at
 	`
 	err := r.db.QueryRowContext(ctx, query, seller.UserID, seller.StoreName).Scan(&seller.ID, &seller.IsVerified, &seller.Rating, &seller.CreatedAt)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return ErrSellerAlreadyExists
+		}
+		return err
+	}
+
 	return err
 }

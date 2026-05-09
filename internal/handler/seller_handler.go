@@ -13,6 +13,10 @@ type SellerHandler struct {
 	sellerService service.SellerService
 }
 
+type RegisterSellerRequest struct {
+	StoreName string `json:"store_name" binding:"required"`
+}
+
 func NewSellerHandler(sellerService service.SellerService) *SellerHandler {
 	return &SellerHandler{sellerService: sellerService}
 }
@@ -23,7 +27,7 @@ func NewSellerHandler(sellerService service.SellerService) *SellerHandler {
 // @Tags sellers
 // @Accept json
 // @Produce json
-// @Param body body model.Seller true "Register seller request"
+// @Param body body RegisterSellerRequest true "Register seller request"
 // @Success 201 {object} map[string]interface{}
 // @Failure 400 {object} map[string]string
 // @Failure 401 {object} map[string]string
@@ -38,7 +42,7 @@ func (h *SellerHandler) RegisterStore(c *gin.Context) {
 		return
 	}
 
-	var req model.Seller
+	var req RegisterSellerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
@@ -50,7 +54,8 @@ func (h *SellerHandler) RegisterStore(c *gin.Context) {
 		return
 	}
 
-	err := h.sellerService.RegisterStore(c.Request.Context(), uid, &req)
+	seller := &model.Seller{StoreName: req.StoreName}
+	err := h.sellerService.RegisterStore(c.Request.Context(), uid, seller)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrSellerInvalidInput):
@@ -65,7 +70,7 @@ func (h *SellerHandler) RegisterStore(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "seller registered successfully",
-		"data":    req,
+		"data":    seller,
 	})
 }
 

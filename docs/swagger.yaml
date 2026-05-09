@@ -7,6 +7,13 @@ definitions:
     required:
     - id_token
     type: object
+  handler.RegisterSellerRequest:
+    properties:
+      store_name:
+        type: string
+    required:
+    - store_name
+    type: object
   model.Product:
     properties:
       category:
@@ -26,21 +33,6 @@ definitions:
       seller_id:
         type: integer
       stock:
-        type: integer
-    type: object
-  model.Seller:
-    properties:
-      created_at:
-        type: string
-      id:
-        type: integer
-      is_verified:
-        type: boolean
-      rating:
-        type: number
-      store_name:
-        type: string
-      user_id:
         type: integer
     type: object
 info:
@@ -263,7 +255,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/model.Seller'
+          $ref: '#/definitions/handler.RegisterSellerRequest'
       produces:
       - application/json
       responses:
