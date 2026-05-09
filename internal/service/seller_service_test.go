@@ -31,6 +31,7 @@ func (m *mockSellerRepo) CreateSeller(ctx context.Context, seller *model.Seller)
 func TestRegisterStore_InvalidInput(t *testing.T) {
 	svc := NewSellerService(&mockSellerRepo{})
 
+	// Test mengirim userID = 0, harusnya mengembalikan ErrSellerInvalidInput
 	err := svc.RegisterStore(context.Background(), 0, &model.Seller{StoreName: "Store"})
 	if !errors.Is(err, ErrSellerInvalidInput) {
 		t.Fatalf("expected ErrSellerInvalidInput, got %v", err)
@@ -39,8 +40,8 @@ func TestRegisterStore_InvalidInput(t *testing.T) {
 
 func TestRegisterStore_Conflict(t *testing.T) {
 	svc := NewSellerService(&mockSellerRepo{
-		getByUserIDFn: func(ctx context.Context, userID int) (*model.Seller, error) {
-			return &model.Seller{ID: 1, UserID: userID}, nil
+		createFn: func(ctx context.Context, seller *model.Seller) error {
+			return repository.ErrSellerAlreadyExists
 		},
 	})
 
@@ -53,9 +54,6 @@ func TestRegisterStore_Conflict(t *testing.T) {
 func TestRegisterStore_Success(t *testing.T) {
 	called := false
 	svc := NewSellerService(&mockSellerRepo{
-		getByUserIDFn: func(ctx context.Context, userID int) (*model.Seller, error) {
-			return nil, repository.ErrSellerNotFound
-		},
 		createFn: func(ctx context.Context, seller *model.Seller) error {
 			called = true
 			seller.ID = 10
@@ -92,9 +90,6 @@ func TestGetStoreProfile_NotFound(t *testing.T) {
 func TestRegisterStore_TrimStoreName(t *testing.T) {
 	var receivedName string
 	svc := NewSellerService(&mockSellerRepo{
-		getByUserIDFn: func(ctx context.Context, userID int) (*model.Seller, error) {
-			return nil, repository.ErrSellerNotFound
-		},
 		createFn: func(ctx context.Context, seller *model.Seller) error {
 			receivedName = seller.StoreName
 			return nil
@@ -135,9 +130,6 @@ func TestRegisterStore_StoreNameTooLong(t *testing.T) {
 
 func TestRegisterStore_CreateReturnsAlreadyExists_MapsConflict(t *testing.T) {
 	svc := NewSellerService(&mockSellerRepo{
-		getByUserIDFn: func(ctx context.Context, userID int) (*model.Seller, error) {
-			return nil, repository.ErrSellerNotFound
-		},
 		createFn: func(ctx context.Context, seller *model.Seller) error {
 			return repository.ErrSellerAlreadyExists
 		},
