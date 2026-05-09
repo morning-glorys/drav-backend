@@ -16,6 +16,9 @@ type ProductRepository interface {
 	GetAllProducts(ctx context.Context, query model.ProductListQuery) ([]model.Product, error)
 	GetProductByID(ctx context.Context, id int) (*model.Product, error)
 	CreateProduct(ctx context.Context, product *model.Product) error
+	ProductExists(ctx context.Context, id int) (bool, error)
+	ProductOwnedByUser(ctx context.Context, productID int, userID int) (bool, error)
+	CreateProductImage(ctx context.Context, productID int, imageURL string) (int, error)
 }
 
 type productRepository struct {
@@ -109,4 +112,54 @@ func (r *productRepository) CreateProduct(ctx context.Context, product *model.Pr
 	).Scan(&product.ID, &product.CreatedAt)
 
 	return err
+}
+
+func (r *productRepository) ProductExists(ctx context.Context, id int) (bool, error) {
+	query := `SELECT 1 FROM products WHERE id = $1`
+	var exists int
+	err := r.db.QueryRowContext(ctx, query, id).Scan(&exists)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	return true, nil
+}
+
+// check if product is owned by user
+func (r *productRepository) ProductOwnedByUser(ctx context.Context, productID int, userID int) (bool, error) {
+	query := `
+		SELECT 1
+		FROM products p
+		JOIN sellers s ON s.id = p.seller_id
+		WHERE p.id = $1 AND s.user_id = $2
+	`
+	var exists int
+	err := r.db.QueryRowContext(ctx, query, productID, userID).Scan(&exists)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	return true, nil
+}
+
+func (r *productRepository) CreateProductImage(ctx context.Context, productID int, imageURL string) (int, error) {
+	query := `
+		INSERT INTO product_images (product_id, image_url)
+		VALUES ($1, $2)
+		RETURNING id
+	`
+
+	var imageID int
+	err := r.db.QueryRowContext(ctx, query, productID, imageURL).Scan(&imageID)
+	if err != nil {
+		return 0, err
+	}
+
+	return imageID, nil
 }

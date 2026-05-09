@@ -38,7 +38,6 @@ func (r *sellerRepository) GetSellerByUserID(ctx context.Context, userID int) (*
 		}
 		return nil, err
 	}
-
 	return &s, nil
 }
 
@@ -57,6 +56,5 @@ func (r *sellerRepository) CreateSeller(ctx context.Context, seller *model.Selle
 		}
 		return err
 	}
-
-	return err
+	return nil
 }

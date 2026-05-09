@@ -42,24 +42,27 @@ func (h *SellerHandler) RegisterStore(c *gin.Context) {
 		return
 	}
 
-	var req RegisterSellerRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
-		return
-	}
-
 	uid, ok := userID.(int)
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
 
-	seller := &model.Seller{StoreName: req.StoreName}
-	err := h.sellerService.RegisterStore(c.Request.Context(), uid, seller)
+	var req RegisterSellerRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+
+	sellerModel := &model.Seller{
+		StoreName: req.StoreName,
+	}
+
+	err := h.sellerService.RegisterStore(c.Request.Context(), uid, sellerModel)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrSellerInvalidInput):
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid seller data"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid seller data or store name length"})
 		case errors.Is(err, service.ErrSellerConflict):
 			c.JSON(http.StatusConflict, gin.H{"error": "seller already registered"})
 		default:
@@ -70,7 +73,7 @@ func (h *SellerHandler) RegisterStore(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "seller registered successfully",
-		"data":    seller,
+		"data":    sellerModel,
 	})
 }
 
@@ -103,7 +106,6 @@ func (h *SellerHandler) GetStoreProfile(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "seller not found"})
 			return
 		}
-
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
@@ -113,3 +115,5 @@ func (h *SellerHandler) GetStoreProfile(c *gin.Context) {
 		"data":    store,
 	})
 }
+
+//fix: resolve Copilot PR review on seller module (DTO, UTF-8, Unique Violation)

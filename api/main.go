@@ -101,6 +101,7 @@ func main() {
 			})
 		})
 		protectedAPI.POST("/products", productHandler.CreateProduct)
+		protectedAPI.POST("/products/upload-image", productHandler.UploadProductImage)
 		protectedAPI.POST("/sellers/register", sellerHandler.RegisterStore)
 		protectedAPI.GET("/sellers/me", sellerHandler.GetStoreProfile)
 	}

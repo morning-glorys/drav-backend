@@ -13,6 +13,9 @@ type mockProductRepo struct {
 	getAllFn     func(ctx context.Context, query model.ProductListQuery) ([]model.Product, error)
 	getByIDFn    func(ctx context.Context, id int) (*model.Product, error)
 	createProdFn func(ctx context.Context, product *model.Product) error
+	existsFn     func(ctx context.Context, id int) (bool, error)
+	ownedFn      func(ctx context.Context, productID int, userID int) (bool, error)
+	createImgFn  func(ctx context.Context, productID int, imageURL string) (int, error)
 }
 
 func (m *mockProductRepo) GetAllProducts(ctx context.Context, query model.ProductListQuery) ([]model.Product, error) {
@@ -34,6 +37,27 @@ func (m *mockProductRepo) CreateProduct(ctx context.Context, product *model.Prod
 		return m.createProdFn(ctx, product)
 	}
 	return nil
+}
+
+func (m *mockProductRepo) ProductExists(ctx context.Context, id int) (bool, error) {
+	if m.existsFn != nil {
+		return m.existsFn(ctx, id)
+	}
+	return false, nil
+}
+
+func (m *mockProductRepo) ProductOwnedByUser(ctx context.Context, productID int, userID int) (bool, error) {
+	if m.ownedFn != nil {
+		return m.ownedFn(ctx, productID, userID)
+	}
+	return false, nil
+}
+
+func (m *mockProductRepo) CreateProductImage(ctx context.Context, productID int, imageURL string) (int, error) {
+	if m.createImgFn != nil {
+		return m.createImgFn(ctx, productID, imageURL)
+	}
+	return 0, nil
 }
 
 func TestGetProductByID_InvalidID(t *testing.T) {
@@ -145,5 +169,56 @@ func TestGetAllProducts_SetsDefaultPagination(t *testing.T) {
 
 	if received.Limit != 10 {
 		t.Fatalf("expected default limit 10, got %d", received.Limit)
+	}
+}
+
+func TestAttachProductImage_ProductNotFound(t *testing.T) {
+	svc := NewProductService(&mockProductRepo{
+		existsFn: func(ctx context.Context, id int) (bool, error) {
+			return false, nil
+		},
+	})
+
+	_, err := svc.AttachProductImage(context.Background(), 10, 1, "https://img.example/a.png")
+	if !errors.Is(err, repository.ErrProductNotFound) {
+		t.Fatalf("expected ErrProductNotFound, got %v", err)
+	}
+}
+
+func TestAttachProductImage_Forbidden(t *testing.T) {
+	svc := NewProductService(&mockProductRepo{
+		existsFn: func(ctx context.Context, id int) (bool, error) {
+			return true, nil
+		},
+		ownedFn: func(ctx context.Context, productID int, userID int) (bool, error) {
+			return false, nil
+		},
+	})
+
+	_, err := svc.AttachProductImage(context.Background(), 10, 1, "https://img.example/a.png")
+	if !errors.Is(err, ErrProductForbidden) {
+		t.Fatalf("expected ErrProductForbidden, got %v", err)
+	}
+}
+
+func TestAttachProductImage_Success(t *testing.T) {
+	svc := NewProductService(&mockProductRepo{
+		existsFn: func(ctx context.Context, id int) (bool, error) {
+			return true, nil
+		},
+		ownedFn: func(ctx context.Context, productID int, userID int) (bool, error) {
+			return true, nil
+		},
+		createImgFn: func(ctx context.Context, productID int, imageURL string) (int, error) {
+			return 77, nil
+		},
+	})
+
+	imageID, err := svc.AttachProductImage(context.Background(), 10, 1, "https://img.example/a.png")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if imageID != 77 {
+		t.Fatalf("expected image id 77, got %d", imageID)
 	}
 }

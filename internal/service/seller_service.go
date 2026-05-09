@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 	"unicode/utf8"
 
@@ -15,11 +14,6 @@ var (
 	ErrSellerInvalidInput = errors.New("invalid seller input")
 	ErrSellerConflict     = errors.New("seller already exists")
 	ErrSellerNotFound     = errors.New("seller not found")
-)
-
-const (
-	storeNameMinLength = 3
-	storeNameMaxLength = 255
 )
 
 type SellerService interface {
@@ -37,36 +31,26 @@ func NewSellerService(sellerRepo repository.SellerRepository) SellerService {
 
 // register store
 func (s *sellerService) RegisterStore(ctx context.Context, userID int, req *model.Seller) error {
-	if userID <= 0 || req == nil {
-		return ErrSellerInvalidInput
-	}
-
 	req.StoreName = strings.TrimSpace(req.StoreName)
-	if req.StoreName == "" {
+	nameLength := utf8.RuneCountInString(req.StoreName)
+
+	if userID <= 0 {
 		return ErrSellerInvalidInput
 	}
+	req.StoreName = strings.TrimSpace(req.StoreName)
+	nameLength = utf8.RuneCountInString(req.StoreName)
 
-	storeNameLen := utf8.RuneCountInString(req.StoreName)
-	if storeNameLen < storeNameMinLength || storeNameLen > storeNameMaxLength {
+	if nameLength < 3 || nameLength > 255 {
 		return ErrSellerInvalidInput
-	}
-
-	_, err := s.sellerRepo.GetSellerByUserID(ctx, userID)
-	if err == nil {
-		return ErrSellerConflict
-	}
-
-	if !errors.Is(err, repository.ErrSellerNotFound) {
-		return fmt.Errorf("failed to check existing seller: %w", err)
 	}
 
 	req.UserID = userID
-	err = s.sellerRepo.CreateSeller(ctx, req)
+	err := s.sellerRepo.CreateSeller(ctx, req)
 	if err != nil {
 		if errors.Is(err, repository.ErrSellerAlreadyExists) {
 			return ErrSellerConflict
 		}
-		return fmt.Errorf("failed to create seller: %w", err)
+		return err
 	}
 	return nil
 }
@@ -78,7 +62,7 @@ func (s *sellerService) GetStoreProfile(ctx context.Context, userID int) (*model
 		if errors.Is(err, repository.ErrSellerNotFound) {
 			return nil, ErrSellerNotFound
 		}
-		return nil, fmt.Errorf("failed to get seller profile: %w", err)
+		return nil, err
 	}
 	return seller, nil
 }
