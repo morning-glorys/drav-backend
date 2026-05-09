@@ -210,6 +210,65 @@ paths:
       summary: Get product by ID
       tags:
       - products
+  /products/upload-image:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload a product image to cloud storage
+      parameters:
+      - description: Product ID
+        in: formData
+        name: product_id
+        required: true
+        type: integer
+      - description: Image file (jpg, png, webp), max 5MB
+        in: formData
+        name: image
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Upload product image
+      tags:
+      - products
   /sellers/me:
     get:
       description: Get authenticated user's seller profile

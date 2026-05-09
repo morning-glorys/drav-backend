@@ -13,12 +13,14 @@ var (
 	ErrInvalidProductID   = errors.New("invalid product id")
 	ErrInvalidProductData = errors.New("invalid product data")
 	ErrInvalidQueryParam  = errors.New("invalid query param")
+	ErrProductForbidden   = errors.New("forbidden")
 )
 
 type ProductService interface {
 	GetAllProducts(ctx context.Context, query model.ProductListQuery) ([]model.Product, error)
 	GetProductByID(ctx context.Context, id int) (*model.Product, error)
 	CreateProduct(ctx context.Context, req *model.Product) error
+	AttachProductImage(ctx context.Context, productID int, userID int, imageURL string) (int, error)
 }
 
 type productService struct {
@@ -98,4 +100,34 @@ func (s *productService) CreateProduct(ctx context.Context, req *model.Product) 
 	}
 
 	return nil
+}
+
+// attach product image
+func (s *productService) AttachProductImage(ctx context.Context, productID int, userID int, imageURL string) (int, error) {
+	if productID <= 0 || userID <= 0 || imageURL == "" {
+		return 0, ErrInvalidProductData
+	}
+
+	exists, err := s.productRepo.ProductExists(ctx, productID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to check product existence: %w", err)
+	}
+	if !exists {
+		return 0, repository.ErrProductNotFound
+	}
+
+	owned, err := s.productRepo.ProductOwnedByUser(ctx, productID, userID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to verify product ownership: %w", err)
+	}
+	if !owned {
+		return 0, ErrProductForbidden
+	}
+
+	imageID, err := s.productRepo.CreateProductImage(ctx, productID, imageURL)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create product image: %w", err)
+	}
+
+	return imageID, nil
 }

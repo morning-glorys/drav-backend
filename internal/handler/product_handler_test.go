@@ -5,10 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
+	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 	"github.com/gin-gonic/gin"
 	"github.com/morning-glorys/drav-backend/internal/model"
 	"github.com/morning-glorys/drav-backend/internal/repository"
@@ -19,6 +22,7 @@ type mockProductService struct {
 	getAllFn  func(ctx context.Context, query model.ProductListQuery) ([]model.Product, error)
 	getByIDFn func(ctx context.Context, id int) (*model.Product, error)
 	createFn  func(ctx context.Context, req *model.Product) error
+	attachFn  func(ctx context.Context, productID int, userID int, imageURL string) (int, error)
 }
 
 func (m *mockProductService) GetAllProducts(ctx context.Context, query model.ProductListQuery) ([]model.Product, error) {
@@ -40,6 +44,13 @@ func (m *mockProductService) CreateProduct(ctx context.Context, req *model.Produ
 		return m.createFn(ctx, req)
 	}
 	return nil
+}
+
+func (m *mockProductService) AttachProductImage(ctx context.Context, productID int, userID int, imageURL string) (int, error) {
+	if m.attachFn != nil {
+		return m.attachFn(ctx, productID, userID, imageURL)
+	}
+	return 0, nil
 }
 
 func TestGetProductByID_NotFound_ReturnsGenericNotFound(t *testing.T) {
@@ -167,5 +178,137 @@ func TestGetAllProducts_ServiceInvalidQuery_ReturnsBadRequest(t *testing.T) {
 
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestUploadProductImage_NoFile_ReturnsBadRequest(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	h := NewProductHandler(&mockProductService{})
+	r := gin.New()
+	r.POST("/api/products/upload-image", func(c *gin.Context) {
+		c.Set("userID", 1)
+		h.UploadProductImage(c)
+	})
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	_ = writer.WriteField("product_id", "10")
+	_ = writer.Close()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/products/upload-image", body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestUploadProductImage_UnsupportedMime_ReturnsBadRequest(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	h := NewProductHandler(&mockProductService{})
+	r := gin.New()
+	r.POST("/api/products/upload-image", func(c *gin.Context) {
+		c.Set("userID", 1)
+		h.UploadProductImage(c)
+	})
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	_ = writer.WriteField("product_id", "10")
+	part, err := writer.CreateFormFile("image", "bad.txt")
+	if err != nil {
+		t.Fatalf("failed to create form file: %v", err)
+	}
+	_, _ = part.Write([]byte("not an image content"))
+	_ = writer.Close()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/products/upload-image", body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestUploadProductImage_UploadError_ReturnsInternalServerError(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	h := NewProductHandler(&mockProductService{})
+	h.uploadImageFn = func(ctx context.Context, file multipart.File, params uploader.UploadParams) (string, error) {
+		return "", errors.New("cloud fail")
+	}
+
+	r := gin.New()
+	r.POST("/api/products/upload-image", func(c *gin.Context) {
+		c.Set("userID", 1)
+		h.UploadProductImage(c)
+	})
+
+	const oneByOnePNG = "\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\x0dIDATx\x9cc\xf8\xcf\xc0\x00\x00\x03\x01\x01\x00\x18\xdd\x8d\xb1\x00\x00\x00\x00IEND\xaeB`\x82"
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	_ = writer.WriteField("product_id", "10")
+	part, err := writer.CreateFormFile("image", "ok.png")
+	if err != nil {
+		t.Fatalf("failed to create form file: %v", err)
+	}
+	_, _ = part.Write([]byte(oneByOnePNG))
+	_ = writer.Close()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/products/upload-image", body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected %d, got %d", http.StatusInternalServerError, w.Code)
+	}
+	if !strings.Contains(w.Body.String(), "failed to upload image") {
+		t.Fatalf("unexpected body: %s", w.Body.String())
+	}
+}
+
+func TestUploadProductImage_AttachForbidden_ReturnsForbidden(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	h := NewProductHandler(&mockProductService{
+		attachFn: func(ctx context.Context, productID int, userID int, imageURL string) (int, error) {
+			return 0, service.ErrProductForbidden
+		},
+	})
+	h.uploadImageFn = func(ctx context.Context, file multipart.File, params uploader.UploadParams) (string, error) {
+		return "https://img.example/test.png", nil
+	}
+
+	r := gin.New()
+	r.POST("/api/products/upload-image", func(c *gin.Context) {
+		c.Set("userID", 1)
+		h.UploadProductImage(c)
+	})
+
+	const oneByOnePNG = "\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\x0dIDATx\x9cc\xf8\xcf\xc0\x00\x00\x03\x01\x01\x00\x18\xdd\x8d\xb1\x00\x00\x00\x00IEND\xaeB`\x82"
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	_ = writer.WriteField("product_id", "10")
+	part, err := writer.CreateFormFile("image", "ok.png")
+	if err != nil {
+		t.Fatalf("failed to create form file: %v", err)
+	}
+	_, _ = part.Write([]byte(oneByOnePNG))
+	_ = writer.Close()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/products/upload-image", body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected %d, got %d", http.StatusForbidden, w.Code)
 	}
 }
