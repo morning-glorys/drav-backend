@@ -9,22 +9,39 @@ definitions:
     type: object
   model.Product:
     properties:
+      category:
+        type: string
       created_at:
         type: string
       description:
         type: string
       id:
         type: integer
-      image_url:
-        type: string
+      is_verified:
+        type: boolean
       name:
         type: string
       price:
-        type: number
+        type: integer
+      seller_id:
+        type: integer
       stock:
         type: integer
-      updated_at:
+    type: object
+  model.Seller:
+    properties:
+      created_at:
         type: string
+      id:
+        type: integer
+      is_verified:
+        type: boolean
+      rating:
+        type: number
+      store_name:
+        type: string
+      user_id:
+        type: integer
     type: object
 info:
   contact: {}
@@ -201,6 +218,89 @@ paths:
       summary: Get product by ID
       tags:
       - products
+  /sellers/me:
+    get:
+      description: Get authenticated user's seller profile
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get seller profile
+      tags:
+      - sellers
+  /sellers/register:
+    post:
+      consumes:
+      - application/json
+      description: Register a seller store for authenticated user
+      parameters:
+      - description: Register seller request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.Seller'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Register seller store
+      tags:
+      - sellers
 schemes:
 - http
 - https
