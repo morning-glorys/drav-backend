@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS cart_items;
+DROP TABLE IF EXISTS carts;
+
+ALTER TABLE sellers DROP CONSTRAINT IF EXISTS unique_user_seller;
