@@ -115,5 +115,3 @@ func (h *SellerHandler) GetStoreProfile(c *gin.Context) {
 		"data":    store,
 	})
 }
-
-//fix: resolve Copilot PR review on seller module (DTO, UTF-8, Unique Violation)

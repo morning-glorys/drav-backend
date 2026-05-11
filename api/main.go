@@ -65,6 +65,11 @@ func main() {
 	sellerService := service.NewSellerService(sellerRepo)
 	sellerHandler := handler.NewSellerHandler(sellerService)
 
+	// Inject Cart
+	cartRepo := repository.NewCartRepository(db)
+	cartService := service.NewCartService(cartRepo, productRepo)
+	cartHandler := handler.NewCartHandler(cartService)
+
 	r := gin.Default()
 	r.Use(middleware.CORS())
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
@@ -104,6 +109,8 @@ func main() {
 		protectedAPI.POST("/products/upload-image", productHandler.UploadProductImage)
 		protectedAPI.POST("/sellers/register", sellerHandler.RegisterStore)
 		protectedAPI.GET("/sellers/me", sellerHandler.GetStoreProfile)
+		protectedAPI.POST("/carts", cartHandler.AddToCart)
+		protectedAPI.GET("/carts", cartHandler.GetMyCart)
 	}
 
 	port := os.Getenv("PORT")

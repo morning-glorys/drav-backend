@@ -14,6 +14,17 @@ definitions:
     required:
     - store_name
     type: object
+  model.AddToCartRequest:
+    properties:
+      product_id:
+        type: integer
+      quantity:
+        minimum: 1
+        type: integer
+    required:
+    - product_id
+    - quantity
+    type: object
   model.Product:
     properties:
       category:
@@ -82,6 +93,82 @@ paths:
       summary: Login with Google
       tags:
       - auth
+  /carts:
+    get:
+      description: Retrieve all items in the authenticated user's cart
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user's cart
+      tags:
+      - carts
+    post:
+      consumes:
+      - application/json
+      description: Add a product to user's shopping cart
+      parameters:
+      - description: Add to cart request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.AddToCartRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Add item to cart
+      tags:
+      - carts
   /products:
     get:
       description: Get product list with pagination and optional filters
