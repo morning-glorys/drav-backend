@@ -25,6 +25,14 @@ definitions:
     - product_id
     - quantity
     type: object
+  model.CheckoutRequest:
+    properties:
+      address:
+        minLength: 10
+        type: string
+    required:
+    - address
+    type: object
   model.Product:
     properties:
       category:
@@ -169,6 +177,49 @@ paths:
       summary: Add item to cart
       tags:
       - carts
+  /orders/checkout:
+    post:
+      consumes:
+      - application/json
+      description: Process items in cart and create an order
+      parameters:
+      - description: Checkout request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.CheckoutRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Checkout cart
+      tags:
+      - orders
   /products:
     get:
       description: Get product list with pagination and optional filters
