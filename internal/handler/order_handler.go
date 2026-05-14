@@ -1,7 +1,11 @@
 package handler
 
 import (
+	"net/http"
+	"strings"
+
 	"github.com/gin-gonic/gin"
+	"github.com/morning-glorys/drav-backend/internal/model"
 	"github.com/morning-glorys/drav-backend/internal/service"
 )
 
@@ -27,5 +31,33 @@ func NewOrderHandler(orderService service.OrderService) *OrderHandler {
 // @Security BearerAuth
 // @Router /orders/checkout [post]
 func (h *OrderHandler) Checkout(c *gin.Context) {
-	// TODO: implemented handler checkout
+	userIDRaw, exist := c.Get("userID")
+	if !exist {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	userID, ok := userIDRaw.(int)
+	if !ok || userID <= 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	var req model.CheckoutRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	order, err := h.orderService.Checkout(c.Request.Context(), userID, &req)
+	if err != nil {
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "Cart Is Empty") || strings.Contains(errMsg, "Invalid cart items") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": errMsg})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "checkout successful, order created",
+		"data":    order,
+	})
 }
