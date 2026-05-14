@@ -1,12 +1,13 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/morning-glorys/drav-backend/internal/model"
 	"github.com/morning-glorys/drav-backend/internal/service"
+	"github.com/morning-glorys/drav-backend/pkg/apperror"
 )
 
 type OrderHandler struct {
@@ -48,12 +49,16 @@ func (h *OrderHandler) Checkout(c *gin.Context) {
 	}
 	order, err := h.orderService.Checkout(c.Request.Context(), userID, &req)
 	if err != nil {
-		errMsg := err.Error()
-		if strings.Contains(errMsg, "Cart Is Empty") || strings.Contains(errMsg, "Invalid cart items") {
-			c.JSON(http.StatusBadRequest, gin.H{"error": errMsg})
-			return
+		switch {
+		case errors.Is(err, apperror.ErrOrderCartEmpty):
+			c.JSON(http.StatusBadRequest, gin.H{"error": "cart is empty"})
+		case errors.Is(err, apperror.ErrOrderInsufficientStock):
+			c.JSON(http.StatusConflict, gin.H{"error": "insufficient stock"})
+		case errors.Is(err, apperror.ErrInvalidInput):
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{

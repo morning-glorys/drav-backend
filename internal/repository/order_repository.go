@@ -22,12 +22,14 @@ func NewOrderRepository(db *sql.DB) OrderRepository {
 
 // create order
 func (r *orderRepository) CreateOrder(ctx context.Context, tx *sql.Tx, order *model.Order) (int, error) {
-	query := `INSERT INTO orders (user_id, total_price, status) VALUES ($1, $2, $3) RETURNING id`
+	query := `INSERT INTO orders (user_id, total_price, address) VALUES ($1, $2, $3) RETURNING id, status`
 	var id int
-	err := tx.QueryRowContext(ctx, query, order.UserID, order.TotalPrice, order.Status).Scan(&id)
+	var status string
+	err := tx.QueryRowContext(ctx, query, order.UserID, order.TotalPrice, order.Address).Scan(&id, &status)
 	if err != nil {
 		return 0, err
 	}
+	order.Status = status
 	return id, nil
 }
 
