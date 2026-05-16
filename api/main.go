@@ -75,6 +75,11 @@ func main() {
 	orderService := service.NewOrderService(db, orderRepo, cartRepo, productRepo)
 	orderHandler := handler.NewOrderHandler(orderService)
 
+	//Inject Review
+	reviewRepo := repository.NewReviewRepository(db)
+	reviewService := service.NewReviewService(reviewRepo)
+	reviewHandler := handler.NewReviewHandler(reviewService)
+
 	r := gin.Default()
 	r.Use(middleware.CORS())
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
@@ -92,6 +97,7 @@ func main() {
 		api.POST("/auth/google", middleware.RateLimitByIP(2, 5), authHandler.GoogleLogin)
 		api.GET("/products", productHandler.GetAllProducts)
 		api.GET("/products/:id", productHandler.GetProductByID)
+		api.GET("/products/:products_id/reviews", reviewHandler.GetReviewsByProductID)
 	}
 
 	// --- PROTECTED ROUTES ---
@@ -117,6 +123,7 @@ func main() {
 		protectedAPI.POST("/carts", cartHandler.AddToCart)
 		protectedAPI.GET("/carts", cartHandler.GetMyCart)
 		protectedAPI.POST("/orders/checkout", orderHandler.Checkout)
+		protectedAPI.POST("/reviews", reviewHandler.CreateReview)
 	}
 
 	port := os.Getenv("PORT")
