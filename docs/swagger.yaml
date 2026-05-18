@@ -33,6 +33,21 @@ definitions:
     required:
     - address
     type: object
+  model.CreateReviewRequest:
+    properties:
+      comment:
+        type: string
+      product_id:
+        type: integer
+      rating:
+        maximum: 5
+        minimum: 1
+        type: integer
+    required:
+    - comment
+    - product_id
+    - rating
+    type: object
   model.Product:
     properties:
       category:
@@ -348,6 +363,38 @@ paths:
       summary: Get product by ID
       tags:
       - products
+  /products/{product_id}/reviews:
+    get:
+      description: Retrieve all reviews for a specific product
+      parameters:
+      - description: Product ID
+        in: path
+        name: product_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get reviews by product ID
+      tags:
+      - reviews
   /products/upload-image:
     post:
       consumes:
@@ -407,6 +454,49 @@ paths:
       summary: Upload product image
       tags:
       - products
+  /reviews:
+    post:
+      consumes:
+      - application/json
+      description: Add a review and rating to a product
+      parameters:
+      - description: Review request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateReviewRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Add a product review
+      tags:
+      - reviews
   /sellers/me:
     get:
       description: Get authenticated user's seller profile

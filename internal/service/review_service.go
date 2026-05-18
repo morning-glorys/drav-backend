@@ -5,6 +5,7 @@ import (
 
 	"github.com/morning-glorys/drav-backend/internal/model"
 	"github.com/morning-glorys/drav-backend/internal/repository"
+	"github.com/morning-glorys/drav-backend/pkg/apperror"
 )
 
 type ReviewService interface {
@@ -22,12 +23,30 @@ func NewReviewService(reviewRepo repository.ReviewRepository) ReviewService {
 
 // create review
 func (s *reviewService) CreateReview(ctx context.Context, userID int, req *model.CreateReviewRequest) error {
+	if req.Rating < 1 || req.Rating > 5 || req.Comment == "" {
+		return apperror.ErrReviewInvalid
+	}
+	review := &model.Review{
+		UserID:    userID,
+		ProductID: req.ProductID,
+		Rating:    req.Rating,
+		Comment:   req.Comment,
+	}
+	err := s.reviewRepo.CreateReviewAndUpdateSeller(ctx, review)
+	if err != nil {
+		return apperror.ErrReviewFailed
+	}
 	return nil
-	// TODO: Implementasikan logic untuk membuat review, termasuk validasi input dan memastikan user hanya bisa mereview produk yang pernah dibeli gunakan eror handling di pkg/apperror
 }
 
 // Get reviews by product id
 func (s *reviewService) GetReviewsByProductID(ctx context.Context, productID int) ([]model.Review, error) {
-	return nil, nil
-	//TODO: Implementasikan logic untuk mengambil reviews berdasarkan product id, termasuk nama user yang mereview gunakan eror handling di pkg/apperror
+	reviews, err := s.reviewRepo.GetReviewsByProductID(ctx, productID)
+	if err != nil {
+		return nil, err
+	}
+	if reviews == nil {
+		reviews = []model.Review{}
+	}
+	return reviews, err
 }
