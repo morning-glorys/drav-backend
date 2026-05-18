@@ -97,7 +97,7 @@ func main() {
 		api.POST("/auth/google", middleware.RateLimitByIP(2, 5), authHandler.GoogleLogin)
 		api.GET("/products", productHandler.GetAllProducts)
 		api.GET("/products/:id", productHandler.GetProductByID)
-		api.GET("/products/:id/reviews", reviewHandler.GetReviewsByProductID)
+		api.GET("/products/:product_id/reviews", reviewHandler.GetReviewsByProductID)
 	}
 
 	// --- PROTECTED ROUTES ---

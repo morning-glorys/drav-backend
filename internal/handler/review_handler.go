@@ -34,12 +34,12 @@ func NewReviewHandler(reviewService service.ReviewService) *ReviewHandler {
 func (h *ReviewHandler) CreateReview(c *gin.Context) {
 	userIDRaw, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
 	userID, ok := userIDRaw.(int)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID"})
+	if !ok || userID <= 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
 	var req model.CreateReviewRequest
@@ -49,15 +49,20 @@ func (h *ReviewHandler) CreateReview(c *gin.Context) {
 	}
 	err := h.reviewService.CreateReview(c.Request.Context(), userID, &req)
 	if err != nil {
-		if errors.Is(err, apperror.ErrReviewInvalid) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "rating harus 1-5 dan komentar tidak boleh kosong"})
-			return
+		switch {
+		case errors.Is(err, apperror.ErrReviewInvalid):
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid review input"})
+		case errors.Is(err, apperror.ErrReviewProductNotFound):
+			c.JSON(http.StatusNotFound, gin.H{"error": "product not found"})
+		case errors.Is(err, apperror.ErrReviewNotPurchased):
+			c.JSON(http.StatusForbidden, gin.H{"error": "product not purchased"})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "terjadi kesalahan internal server"})
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"message": "ulasan berhasil ditambahkan"})
+	c.JSON(http.StatusCreated, gin.H{"message": "review created successfully"})
 
 }
 
@@ -69,21 +74,30 @@ func (h *ReviewHandler) CreateReview(c *gin.Context) {
 // @Param product_id path int true "Product ID"
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /products/{product_id}/reviews [get]
 func (h *ReviewHandler) GetReviewsByProductID(c *gin.Context) {
 	productID, err := strconv.Atoi(c.Param("product_id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "id produk tidak valid"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid product id"})
+		return
+	}
+	if productID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid product id"})
 		return
 	}
 	reviews, err := h.reviewService.GetReviewsByProductID(c.Request.Context(), productID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "gagal mengambil ulasan produk"})
+		if errors.Is(err, apperror.ErrReviewProductNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "product not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve reviews"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"message": "berhasil mengambil ulasan",
+		"message": "reviews retrieved successfully",
 		"data":    reviews,
 	})
 }
