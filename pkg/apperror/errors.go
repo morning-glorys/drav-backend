@@ -13,5 +13,7 @@ var (
 	ErrOrderCartEmpty         = errors.New("keranjang kosong")
 	ErrOrderInsufficientStock = errors.New("stok tidak mencukupi")
 	ErrReviewInvalid          = errors.New("input ulasan tidak valid")
+	ErrReviewProductNotFound  = errors.New("produk tidak ditemukan")
+	ErrReviewNotPurchased     = errors.New("produk belum pernah dibeli")
 	ErrReviewFailed           = errors.New("gagal menyimpan ulasan")
 )
